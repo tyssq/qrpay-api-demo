@@ -9,14 +9,16 @@ import org.apache.commons.codec.digest.DigestUtils;
 import com.alibaba.fastjson.JSONObject;
 
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 /**
- * qrpay支付工具类（有报错请把@Data注解移除）
+ * qrpay支付工具类（有报错请把@Data和@Slf4j注解移除）
  * 
  * @author LiaoZhengHan
  * @date 2018年12月12日
  */
 @Data
+@Slf4j
 public class QrpayPayUtil {
 
 	private String userId;
@@ -30,12 +32,13 @@ public class QrpayPayUtil {
 	private String msg;
 
 	public static void main(String[] args) {
+		String reqUrl = "接口地址";
 		String orderId = StringUtil.getRandomOrder();
-		QrpayPayUtil qrpayPayUtil = new QrpayPayUtil("您的商户编号", "您的接口密钥");
+		QrpayPayUtil qrpayPayUtil = new QrpayPayUtil("您的商户编号", "您的接口密钥", reqUrl);
 		boolean bl = qrpayPayUtil.doPay(orderId, 1L, "到账银行卡号", "到账人银行预留姓名");
 		if (bl) {
 			// TODO 1.成功代表请求受理成功，不代表代付成功，请发起查询
-			qrpayPayUtil = new QrpayPayUtil("您的商户编号", "您的接口密钥");
+			qrpayPayUtil = new QrpayPayUtil("您的商户编号", "您的接口密钥", reqUrl);
 			qrpayPayUtil.queryAgentPay(orderId);
 		} else {
 			// TODO 请求失败处理
@@ -90,7 +93,7 @@ public class QrpayPayUtil {
 	 */
 	public Boolean queryAgentPay(String orderId) {
 		Map<String, String> reqMap = new HashMap<>();
-		reqMap.put("service_id", "agent.pay");
+		reqMap.put("service_id", "agent.pay.query");
 		reqMap.put("order_id", orderId);
 
 		if (doPost(reqMap)) {
@@ -156,10 +159,44 @@ public class QrpayPayUtil {
 		sign = DigestUtils.md5Hex(signStr).toUpperCase();
 	}
 
-	public QrpayPayUtil(String userId, String key) {
+	public QrpayPayUtil(String userId, String key, String reqUrl) {
 		super();
 		this.userId = userId;
 		this.key = key;
+		this.reqUrl = reqUrl;
 	}
 
+	/**
+	 * 创建订单
+	 * 
+	 * @author LiaoZhengHan
+	 * @date 2019年1月2日
+	 * @param orderId   订单编号，请确保唯一，最好在订单前加上公司简称，如:DDG（点点够）
+	 * @param amount    订单金额，单位：分
+	 * @param tradeType 下单类型（1：快捷），暂时只有1
+	 * @return
+	 */
+	public boolean createOrder(String orderId, long amount, int tradeType) {
+		Map<String, String> reqMap = new HashMap<>();
+
+		reqMap.put("service_id", "trade.order");
+
+		reqMap.put("order_id", orderId);
+		reqMap.put("amount", amount + "");
+		reqMap.put("trade_type", tradeType + "");
+
+		if (doPost(reqMap)) {
+			log.info("【下单请求返回】" + rspStr);
+			try {
+				JSONObject json = JSONObject.parseObject(rspStr);
+				if ("0000".equals(json.get("code"))) {
+					return true;
+				}
+			} catch (Exception e) {
+				log.error("解析返回的json数据出错，请求数据：{}，返回数据：{}", reqMap, rspStr);
+			}
+		}
+
+		return false;
+	}
 }
