@@ -136,6 +136,7 @@ public class QrpayPayUtil {
 
 		try {
 			rspStr = HttpUtil.httpPostJson(reqUrl, reqMap);
+			System.out.println(reqMap);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return false;
@@ -155,7 +156,6 @@ public class QrpayPayUtil {
 		Map<String, String> signMap = new TreeMap<>(reqMap);
 		String signStr = StringUtil.getUrlParam(signMap);
 		signStr += "&key=" + key;
-		System.out.println("【签名字符串】" + signStr);
 		sign = DigestUtils.md5Hex(signStr).toUpperCase();
 	}
 
